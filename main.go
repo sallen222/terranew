@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -19,6 +21,7 @@ func main () {
 	
 	runInit()
 	makeFiles()
+	
 	if isGitRepo() {
 		gitignore()
 	} else {
@@ -34,7 +37,6 @@ func terraformExists() bool {
 func runInit () {
 	cmd := exec.Command("terraform", "init")
 	cmd.Dir = "terraform"
-	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
 	if err != nil {
@@ -95,8 +97,7 @@ func gitignore () {
 			defer ignore.Close()
 
 		}
-	}
-	
+	}	
 
 	var gi [15][]byte
 	gi[0]=[]byte("**/.terraform/*\n")
@@ -119,13 +120,21 @@ func gitignore () {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer f.Close()
 
-	for _, item := range gi {
-		_, err := f.Write(item)
-		if err != nil {
-			log.Fatal(err)
-		}
+	data, err := ioutil.ReadFile(".gitignore")
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	defer f.Close()
+	for _, item := range gi {		
+		if idx := bytes.Index(data, item); idx != -1 {
+			fmt.Println("Found", string(item))
+		} else {
+			_, err := f.Write(item)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
 }
